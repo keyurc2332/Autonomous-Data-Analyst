@@ -6,7 +6,7 @@ system reads is `agent_runs` and `experiments`, written here.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,7 +52,7 @@ async def run_analysis(
         project_id=project.id,
         agent_name="analysis_graph",
         status=RunStatus.RUNNING,
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
         input_payload={"dataset_id": str(dataset.id), "user_goal": user_goal},
     )
     db.add(run)
@@ -77,10 +77,10 @@ async def run_analysis(
         logger.exception("Graph invocation failed")
         run.status = RunStatus.FAILED
         run.error = f"{type(exc).__name__}: {exc}"
-        run.finished_at = datetime.now(timezone.utc)
+        run.finished_at = datetime.now(UTC)
         return await _finalise(db, run)
 
-    run.finished_at = datetime.now(timezone.utc)
+    run.finished_at = datetime.now(UTC)
     run.output_payload = {
         "plan": final.get("plan"),
         "summary": final.get("summary"),

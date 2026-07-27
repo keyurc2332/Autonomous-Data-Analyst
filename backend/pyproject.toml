@@ -64,7 +64,11 @@ dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
-    "ruff>=0.8.0",
+    # Pinned, not floating. `ruff>=x` resolves to the newest release at CI
+    # run time, so a new ruff version adds rules and the build breaks with no
+    # change on our side -- which is exactly what happened with UP017. A
+    # linter is a build input; it gets an exact version like any other.
+    "ruff==0.16.0",
     "mypy>=1.13.0",
 ]
 

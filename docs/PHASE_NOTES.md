@@ -722,3 +722,17 @@ reason rather than silenced: SQLAlchemy and Pydantic both rely on the member
 values being plain strings, and `StrEnum` changes what `str(member)` returns,
 which several comparisons depend on. An ignore with a justification is a
 decision; an ignore without one is a shrug.
+
+
+### The linter was unpinned
+
+The next CI run failed on `UP017` — a rule that had not existed when the code
+was written. `ruff>=0.8.0` resolves to the newest release at run time, so a
+new ruff version adds rules and the build breaks with no change on our side.
+The same code passed locally on ruff 0.16.0 and failed in CI minutes later.
+
+Pinned to `ruff==0.16.0`. A linter is a build input and gets an exact version
+like any other dependency; "latest" is not a version.
+
+The flagged code was changed anyway, since `datetime.UTC` is the better
+spelling on Python 3.11+.

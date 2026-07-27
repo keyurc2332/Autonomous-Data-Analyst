@@ -1,6 +1,6 @@
 """FastAPI application entrypoint."""
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,7 +35,7 @@ async def _fail_orphaned_runs() -> None:
                 .values(
                     status=RunStatus.FAILED,
                     error="Interrupted: the server restarted while this run was in progress.",
-                    finished_at=datetime.now(timezone.utc),
+                    finished_at=datetime.now(UTC),
                 )
             )
             await db.commit()
