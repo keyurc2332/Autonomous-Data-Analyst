@@ -3,7 +3,6 @@
 The failure mode that matters is a loop that never terminates. Every stop
 condition gets its own test.
 """
-from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd

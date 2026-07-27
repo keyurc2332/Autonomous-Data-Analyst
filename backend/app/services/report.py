@@ -10,7 +10,7 @@ heavy dependency, and no image round-trip.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from io import BytesIO
 from typing import Any
 
@@ -105,7 +105,11 @@ def _cell(value: str, header: bool = False) -> Any:
     return Paragraph(text, _CELL_HEAD if header else _CELL)
 
 
-def _table(rows: list[list[str]], widths: list[float], align_right: list[int] | None = None) -> Table:
+def _table(
+    rows: list[list[str]],
+    widths: list[float],
+    align_right: list[int] | None = None,
+) -> Table:
     wrapped = [[_cell(c, header=(i == 0)) for c in row] for i, row in enumerate(rows)]
     table = Table(wrapped, colWidths=widths, hAlign="LEFT")
     style = [
@@ -192,14 +196,13 @@ def build_report(
     content_width = doc.width
     story: list[Any] = []
 
-    plan = run.get("plan") or {}
     quality = run.get("quality") or {}
     training = run.get("training") or {}
     explanation = run.get("explanation") or {}
     cleaning = run.get("cleaning") or {}
     attempts = run.get("attempts") or []
     reflection = run.get("reflection") or {}
-    stamp = (generated_at or datetime.now(timezone.utc)).strftime("%d %B %Y, %H:%M UTC")
+    stamp = (generated_at or datetime.now(UTC)).strftime("%d %B %Y, %H:%M UTC")
 
     # ---- header -----------------------------------------------------------
     story.append(Paragraph(project_name, styles["title"]))
@@ -324,7 +327,9 @@ def build_report(
 
     story.append(_table(
         [["", ""],
-         ["Rows used", f"{training.get('n_train', 0):,} train / {training.get('n_test', 0):,} test"],
+         ["Rows used",
+          f"{training.get('n_train', 0):,} train / "
+          f"{training.get('n_test', 0):,} test"],
          ["Features", str(len(training.get("features_used") or []))],
          ["Columns excluded", str(len(training.get("features_dropped") or []))],
          ["Best model", str(training.get("best_model") or "—")]],
@@ -352,7 +357,8 @@ def build_report(
             [["Round", "Excluded", "Decided on"]]
             + [[str(a["round"]),
                 ", ".join(a["excluded_features"]) or "—",
-                f"{a.get('gate_metric','')} {a.get('gate_value', a['primary_metric_value']):.4f}"]
+                f"{a.get('gate_metric', '')} "
+                f"{a.get('gate_value', a['primary_metric_value']):.4f}"]
                for a in attempts],
             [18 * mm, content_width - 60 * mm, 42 * mm],
         ))

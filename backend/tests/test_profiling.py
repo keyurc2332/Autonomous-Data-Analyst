@@ -7,7 +7,6 @@ import pytest
 from app.services.profiling import (
     DatasetParseError,
     _py,
-    profile_dataframe,
     profile_file,
 )
 

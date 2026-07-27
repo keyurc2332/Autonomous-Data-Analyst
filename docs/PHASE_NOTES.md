@@ -688,3 +688,37 @@ that the two are different findings.
 Worth noting as a class of bug: a correct fix at one layer can be silently
 reversed by formatting at the next. The data was right; the presentation of it
 to the model was not.
+
+---
+
+## CI packaging failure
+
+`pip install -e ".[dev]"` failed in GitHub Actions with:
+
+> Multiple top-level packages discovered in a flat-layout: ['app', 'alembic']
+
+setuptools saw `app/`, `alembic/` and `tests/` side by side and refused to
+guess which was the distribution.
+
+**Docker hid it.** The Dockerfile copies `pyproject.toml` before the source so
+dependency installation caches across builds — which means nothing was present
+to be ambiguous when pip ran. CI checks out the whole tree first and fails
+immediately. A build that only works because of the order files happen to
+arrive is a build that works by accident.
+
+Fixed with an explicit `[build-system]` block and:
+
+```toml
+[tool.setuptools.packages.find]
+include = ["app*"]
+```
+
+The lint step was also failing on accumulated warnings. Eight were real and
+fixed: a nested conditional, a `try/except/pass` that should be
+`contextlib.suppress`, an unused local, and several over-long lines.
+
+`UP042` (`class X(str, Enum)` should be `StrEnum`) is exempted with a stated
+reason rather than silenced: SQLAlchemy and Pydantic both rely on the member
+values being plain strings, and `StrEnum` changes what `str(member)` returns,
+which several comparisons depend on. An ignore with a justification is a
+decision; an ignore without one is a shrug.

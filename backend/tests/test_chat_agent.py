@@ -4,7 +4,6 @@ The loop is where a model gets to act, so the properties worth pinning are:
 it terminates, hallucinated tools cannot execute, and tool errors come back to
 the model rather than ending the turn.
 """
-from pathlib import Path
 
 import numpy as np
 import pandas as pd

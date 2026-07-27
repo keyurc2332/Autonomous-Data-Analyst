@@ -7,6 +7,7 @@ validation error instead.
 """
 from __future__ import annotations
 
+import contextlib
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -240,10 +241,9 @@ def _classification_metrics(y_true, y_pred, y_proba) -> dict[str, float]:
         "f1": float(f1_score(y_true, y_pred, average="weighted", zero_division=0)),
     }
     if y_proba is not None and len(np.unique(y_true)) == 2:
-        try:
+        # Raises when the test split happens to contain a single class.
+        with contextlib.suppress(ValueError):
             metrics["roc_auc"] = float(roc_auc_score(y_true, y_proba[:, 1]))
-        except ValueError:
-            pass  # single class present in the test split
     return metrics
 
 

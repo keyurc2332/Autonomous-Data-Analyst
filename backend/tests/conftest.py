@@ -1,11 +1,3 @@
-import os
-
-# Tests must never write to the real LangSmith project. LangGraph traces graph
-# execution even when the LLM is stubbed, so one pytest run would bury real
-# traces in fixture noise and consume free-tier quota.
-os.environ["LANGSMITH_TRACING"] = "false"
-os.environ.pop("LANGSMITH_API_KEY", None)
-
 import pytest
 from httpx import ASGITransport, AsyncClient
 

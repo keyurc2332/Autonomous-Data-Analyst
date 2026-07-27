@@ -22,7 +22,7 @@ class LLMConfigError(RuntimeError):
     """Raised when the selected provider is missing required configuration."""
 
 
-def _build_google() -> "BaseChatModel":
+def _build_google() -> BaseChatModel:
     from langchain_google_genai import ChatGoogleGenerativeAI
 
     if not settings.GOOGLE_API_KEY:
@@ -38,7 +38,7 @@ def _build_google() -> "BaseChatModel":
     )
 
 
-def _build_groq() -> "BaseChatModel":
+def _build_groq() -> BaseChatModel:
     from langchain_groq import ChatGroq
 
     if not settings.GROQ_API_KEY:
@@ -54,7 +54,7 @@ def _build_groq() -> "BaseChatModel":
     )
 
 
-def _build_ollama() -> "BaseChatModel":
+def _build_ollama() -> BaseChatModel:
     from langchain_ollama import ChatOllama
 
     return ChatOllama(
@@ -72,7 +72,7 @@ _BUILDERS = {
 
 
 @lru_cache
-def get_llm(provider: LLMProvider | None = None) -> "BaseChatModel":
+def get_llm(provider: LLMProvider | None = None) -> BaseChatModel:
     """Return a chat model for `provider`, defaulting to settings.LLM_PROVIDER.
 
     Cached: building a client per agent invocation wastes connections.
@@ -130,10 +130,13 @@ def message_text(response: object) -> str:
         for block in content:
             if isinstance(block, str):
                 parts.append(block)
-            elif isinstance(block, dict):
-                # "text" blocks carry the prose; tool_use/thinking blocks do not.
-                if block.get("type") in (None, "text") and isinstance(block.get("text"), str):
-                    parts.append(block["text"])
+            # "text" blocks carry the prose; tool_use/thinking blocks do not.
+            elif (
+                isinstance(block, dict)
+                and block.get("type") in (None, "text")
+                and isinstance(block.get("text"), str)
+            ):
+                parts.append(block["text"])
         if parts:
             return "".join(parts).strip()
 

@@ -261,7 +261,10 @@ def count_rows(df: pd.DataFrame, args: CountRows) -> dict[str, Any]:
     matched = int(mask.sum())
     return {
         "column": name,
-        "condition": f"{name} {args.operator} {args.value if args.value is not None else ''}".strip(),
+        "condition": (
+            f"{name} {args.operator} "
+            f"{args.value if args.value is not None else ''}"
+        ).strip(),
         "matched": matched,
         "total": len(df),
         "pct": round(matched / len(df) * 100, 2) if len(df) else 0.0,
