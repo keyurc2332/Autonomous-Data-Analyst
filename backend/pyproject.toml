@@ -1,0 +1,83 @@
+[project]
+name = "autonomous-data-analyst"
+version = "0.1.0"
+description = "Agentic AI data analyst: profiles, cleans, models and explains any CSV"
+requires-python = ">=3.11"
+
+dependencies = [
+    # Web
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+
+    # Database
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "psycopg[binary]>=3.2.0",
+    "alembic>=1.14.0",
+
+    # Cache / queue
+    "redis>=5.2.0",
+    "arq>=0.26.0",
+
+    # Agents
+    "langgraph>=0.2.50",
+    "langchain-core>=0.3.20",
+    "langsmith>=0.1.140",
+    "langchain-google-genai>=2.0.0",
+    "langchain-groq>=0.2.0",
+    "langchain-ollama>=0.2.0",
+
+    # Data / ML  (Phase 2+)
+    "pandas>=2.2.0",
+    "numpy>=2.0.0",
+    "scikit-learn>=1.5.0",
+    "joblib>=1.4.0",
+    # Explainability. TreeExplainer covers the ensemble models; if shap is
+    # ever unavailable, services/explain.py degrades to permutation
+    # importance rather than failing.
+    "shap>=0.46.0",
+
+    # Reporting. ReportLab's own chart primitives are used rather than
+    # matplotlib, avoiding a heavy dependency and an image round-trip.
+    "reportlab>=4.2.0",
+    "pypdf>=5.0.0",       # used by the report tests to verify output
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+ignore = ["B008"]  # FastAPI's Depends() in defaults is idiomatic
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q"
+# The SQLAlchemy engine in app/db/session.py is a module-level global, so its
+# connection pool is shared across the whole test session. With the default
+# per-test event loop, a pooled asyncpg connection outlives the loop that
+# created it; the next test borrows a connection bound to a dead loop and
+# asyncpg cannot cancel it cleanly ("coroutine Connection._cancel was never
+# awaited"), which made the integration tests skip at random.
+# One loop for the session keeps the pool valid throughout.
+asyncio_default_test_loop_scope = "session"
+asyncio_default_fixture_loop_scope = "session"
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true

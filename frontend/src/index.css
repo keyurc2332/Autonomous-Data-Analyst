@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   Design tokens.
+
+   The palette is semantic, not decorative: this application exists
+   to issue verdicts, so colour carries meaning. Teal = verified,
+   amber = weak, rose = failed, slate = structure. Nothing is
+   coloured for ornament.
+   --------------------------------------------------------------- */
+@theme {
+  --color-paper: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-rule: #dde2ea;
+  --color-rule-strong: #c3ccd9;
+
+  --color-ink: #14213a;
+  --color-ink-soft: #4a5773;
+  --color-ink-faint: #8390a8;
+
+  --color-verified: #0f766e;
+  --color-verified-wash: #e6f2f1;
+  --color-weak: #a4600a;
+  --color-weak-wash: #fbf1e2;
+  --color-failed: #a81c40;
+  --color-failed-wash: #fbe9ee;
+  --color-inert: #6b7794;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html {
+  background: var(--color-paper);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Every measured value is monospaced. A number the system computed
+   should never look like prose the system wrote. */
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-verified);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
