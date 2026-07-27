@@ -65,7 +65,7 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     display_name: Mapped[str | None] = mapped_column(String(120))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    projects: Mapped[list["Project"]] = relationship(
+    projects: Mapped[list[Project]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
 
@@ -82,16 +82,16 @@ class Project(UUIDPrimaryKey, Timestamps, Base):
     task_type: Mapped[TaskType] = mapped_column(TaskTypeType, default=TaskType.UNKNOWN)
 
     owner: Mapped[User] = relationship(back_populates="projects")
-    datasets: Mapped[list["Dataset"]] = relationship(
+    datasets: Mapped[list[Dataset]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    agent_runs: Mapped[list["AgentRun"]] = relationship(
+    agent_runs: Mapped[list[AgentRun]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    reports: Mapped[list["Report"]] = relationship(
+    reports: Mapped[list[Report]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    messages: Mapped[list["ConversationMessage"]] = relationship(
+    messages: Mapped[list[ConversationMessage]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
 
@@ -141,7 +141,7 @@ class AgentRun(UUIDPrimaryKey, Timestamps, Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     project: Mapped[Project] = relationship(back_populates="agent_runs")
-    experiments: Mapped[list["Experiment"]] = relationship(
+    experiments: Mapped[list[Experiment]] = relationship(
         back_populates="agent_run", cascade="all, delete-orphan"
     )
 

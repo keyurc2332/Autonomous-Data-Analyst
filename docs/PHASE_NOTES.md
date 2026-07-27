@@ -736,3 +736,22 @@ like any other dependency; "latest" is not a version.
 
 The flagged code was changed anyway, since `datetime.UTC` is the better
 spelling on Python 3.11+.
+
+
+### And then a packaging mistake of my own
+
+CI failed again on `UP037` in `app/db/models.py`. The pin was correct and ruff
+was the right version; the file simply had never received the fix.
+
+`ruff check --fix` had already corrected it locally as part of a bulk autofix,
+but the change set shipped afterwards listed only the files edited by hand.
+The autofix touched files nobody was tracking.
+
+The lesson is about change sets, not linting: **after a bulk automated edit,
+ship the whole directory, not the files you remember touching.** `git status`
+would have shown it immediately — a subset assembled from memory will not.
+
+Removing the quotes is safe here: `from __future__ import annotations` already
+makes every annotation a string at runtime, and SQLAlchemy resolves
+relationship targets lazily at mapper-configuration time. Verified by calling
+`configure_mappers()` explicitly rather than assuming.
