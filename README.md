@@ -2,7 +2,7 @@
 
 Upload a table. It profiles the data, decides what to predict, trains and ranks
 models, measures what actually drove the predictions, judges its own output
-against thresholds, and — when the data can't support the question — says so
+against thresholds, and â€” when the data can't support the question â€” says so
 instead of shipping a confident answer.
 
 That last part is the point. Most AutoML demos always produce a result. This
@@ -14,13 +14,13 @@ one will tell you your data isn't good enough.
 
 ## Tested against real data
 
-Seven public datasets. Four classes of silent failure found and fixed —
+Seven public datasets. Four classes of silent failure found and fixed â€”
 each needing a different check, none catchable by unit tests alone:
 
 | Finding | What exposed it |
 |---|---|
-| A column restating the target (Titanic `alive` → false perfect score) | Per-feature mutual information |
-| A target summing its own features (taxis, R² 0.997 from arithmetic) | Linear reconstruction of the target |
+| A column restating the target (Titanic `alive` â†’ false perfect score) | Per-feature mutual information |
+| A target summing its own features (taxis, RÂ² 0.997 from arithmetic) | Linear reconstruction of the target |
 | Missingness misattributed to a column's value (planets) | Explicit missingness indicators |
 | Attribution lost in report formatting | Reading the output |
 
@@ -31,34 +31,34 @@ prompted it.
 ## What it does
 
 ```
-CSV  ──►  Profile  ──►  Plan  ──►  Train  ──►  Explain  ──►  Reflect  ──►  Report
+CSV  â”€â”€â–º  Profile  â”€â”€â–º  Plan  â”€â”€â–º  Train  â”€â”€â–º  Explain  â”€â”€â–º  Reflect  â”€â”€â–º  Report
          (no LLM)      (LLM)     (no LLM)     (no LLM)       (LLM)        (LLM)
-                                                   │             │
-                                                   └──── retry ◄─┘
+                                                   â”‚             â”‚
+                                                   â””â”€â”€â”€â”€ retry â—„â”€â”˜
 ```
 
-**Profile** — deterministic statistics: semantic column types, null rates,
+**Profile** â€” deterministic statistics: semantic column types, null rates,
 cardinality, IQR outliers, skew, correlations, data-quality warnings, and a
 ranked shortlist of plausible prediction targets. No model involved, so it is
 reproducible and costs nothing.
 
-**Plan** — an LLM reads the profile and chooses a target and task type. Its
+**Plan** â€” an LLM reads the profile and chooses a target and task type. Its
 choice is validated against the real column list; a hallucinated column falls
 back to the deterministic shortlist rather than failing the run.
 
-**Train** — scikit-learn pipelines with per-type imputation, scaling and
+**Train** â€” scikit-learn pipelines with per-type imputation, scaling and
 one-hot encoding. Two candidate models per task, ranked. Identifier, constant
 and free-text columns are excluded automatically, with reasons recorded.
 
-**Explain** — SHAP `TreeExplainer` for ensembles, permutation importance
+**Explain** â€” SHAP `TreeExplainer` for ensembles, permutation importance
 otherwise. One-hot columns are folded back to their source column, because a
 reader wants to know that `contract` mattered, not `cat__contract_Two year`.
 
-**Reflect** — thresholds (not an LLM) decide whether the result is weak. Only
+**Reflect** â€” thresholds (not an LLM) decide whether the result is weak. Only
 then is a model asked what to do about it, and it may drop inert features,
 change target, or abandon. The retry loop is bounded three ways.
 
-**Report** — a plain-language summary grounded in the measured importances,
+**Report** â€” a plain-language summary grounded in the measured importances,
 explicitly forbidden from speculating about causes.
 
 ## Run it
@@ -103,12 +103,12 @@ required improvement margin on the *gating* metric, and detection of retries
 that change nothing. An unbounded loop is the characteristic failure of
 agentic systems, so it is the most heavily tested part of the codebase.
 
-**Grounding beats prohibition.** Early versions invented causes — claiming
+**Grounding beats prohibition.** Early versions invented causes â€” claiming
 missing values had "hindered predictive ability" when the column was noise, or
 that 482 rows was "too small" when the sample-size check had passed. Telling
 the model not to speculate did not work. Handing it the specific facts it was
-speculating about — measured importances, and the list of checks that
-*passed* — did.
+speculating about â€” measured importances, and the list of checks that
+*passed* â€” did.
 
 **No DataFrames in graph state.** LangGraph checkpoints state on every
 transition. Datasets and fitted models live on disk; state carries IDs and
@@ -121,7 +121,7 @@ receiving it.
 |---|---|
 | API | FastAPI, async SQLAlchemy 2.0, Alembic |
 | Agents | LangGraph, LangSmith tracing |
-| LLM | Gemini, Groq or local Ollama — swappable with one env var |
+| LLM | Gemini, Groq or local Ollama â€” swappable with one env var |
 | ML | scikit-learn, SHAP |
 | Data | PostgreSQL 16, Redis 7 |
 | UI | React 18, TypeScript, Tailwind v4, Recharts |
@@ -149,7 +149,7 @@ docs/           design notes and decisions per phase
 ## Known limits
 
 - Analysis runs synchronously in the request. Fine for tens of MB, wrong for
-  gigabytes — a background worker is the next piece of work.
+  gigabytes â€” a background worker is the next piece of work.
 - No authentication. `api/deps.get_current_user` is the seam where it lands,
   and it refuses to serve if `ENVIRONMENT=production`.
 - Datetime columns are excluded from features rather than engineered.
