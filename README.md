@@ -5,7 +5,7 @@
 ![Tests](https://img.shields.io/badge/tests-214%20passing-0f766e)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
-
+[**Watch a 90-second walkthrough**](https://youtu.be/26wGekv8rQ4)
 ![Home screen](docs/screenshot-home.png)
 
 Upload a table. It cleans the data, profiles it, decides what to predict, trains
