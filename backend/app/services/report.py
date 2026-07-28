@@ -295,8 +295,12 @@ def build_report(
     if checks:
         story.append(_table(
             [["Check", "Result", "Detail"]]
+            # A non-gating check that did not pass found something and it was
+            # handled -- reporting that as "fail" makes a good outcome read as
+            # a bad one.
             + [[c["name"].replace("_", " "),
-                "pass" if c["passed"] else "fail",
+                "pass" if c["passed"]
+                else ("fail" if c.get("gating", True) else "found"),
                 c["detail"]] for c in checks],
             [30 * mm, 16 * mm, content_width - 46 * mm],
         ))

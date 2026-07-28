@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-![A completed analysis run](docs/screenshot-run.png)
+![Home screen](docs/screenshot-home.png)
 
 Upload a table. It cleans the data, profiles it, decides what to predict, trains
 and ranks models, measures what actually drove the predictions, judges its own
@@ -20,7 +20,7 @@ one tells you your data isn't good enough, and shows you why.
 
 ## Tested against real data
 
-Seven public datasets. Four classes of silent failure found and fixed — each
+Nine public datasets. Five classes of silent failure found and fixed — each
 needing a different check, none catchable by unit tests alone:
 
 | Finding | What exposed it |
@@ -29,10 +29,17 @@ needing a different check, none catchable by unit tests alone:
 | A target summing its own features — taxis, R² 0.997 from arithmetic | Linear reconstruction of the target |
 | Missingness misattributed to a column's value — planets, where `mass` is 99.7% absent for one class and 7.8% for another | Explicit missingness indicators |
 | Attribution lost in report formatting, reversing a fix one layer downstream | Reading the output |
+| Cleaning assuming a comma delimiter, destroying semicolon-separated files before training saw them | Trying a dataset that wasn't comma-delimited |
 
 Each is documented in [`docs/PHASE_NOTES.md`](docs/PHASE_NOTES.md) with the
 measurement that prompted it. The habit that found all four: **treat a high
 score as a hypothesis about the data, not a result.**
+
+Titanic contains `survived` and `alive` — the same fact twice. Left alone, the
+model scores a perfect 1.000 and has learned nothing. Here it is caught,
+removed, and the honest result reported instead:
+
+![Leakage caught on the Titanic dataset](docs/screenshot-run.png)
 
 ---
 
@@ -205,6 +212,10 @@ you trust the rest less.
   refuses to exclude *all* of them; that's the only guard.
 - **No authentication.** `api/deps.get_current_user` is the seam where it lands,
   and it refuses to serve if `ENVIRONMENT=production`.
+- **Temporal leakage can't be detected.** A feature recorded *after* the
+  outcome — bank marketing's `duration`, known only once a call has ended — is
+  statistically indistinguishable from a good predictor. The system surfaces
+  dominant features so a human can recognise it.
 - **Graph checkpointing is in-memory**, so an interrupted run can't resume.
 
 ---

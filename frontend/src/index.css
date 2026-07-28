@@ -34,6 +34,55 @@ html {
   background: var(--color-paper);
 }
 
+/* ---------------------------------------------------------------
+   Motion.
+
+   Restrained on purpose. The subject is measurement, so movement
+   should read as things settling into place rather than performing.
+   One easing curve, two durations, no bounce.
+   --------------------------------------------------------------- */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.rise {
+  animation: rise 320ms cubic-bezier(0.22, 0.7, 0.3, 1) both;
+}
+
+/* Stagger children so a grid resolves left to right rather than at once. */
+.rise-1 { animation-delay: 40ms; }
+.rise-2 { animation-delay: 80ms; }
+.rise-3 { animation-delay: 120ms; }
+.rise-4 { animation-delay: 160ms; }
+
+/* A moving sheen reads as "working" without implying known progress. */
+.sweep {
+  background: linear-gradient(
+    90deg,
+    var(--color-rule) 25%,
+    var(--color-paper) 50%,
+    var(--color-rule) 75%
+  );
+  background-size: 200% 100%;
+  animation: sweep 1.4s linear infinite;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -58,6 +107,11 @@ body {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .rise {
+    animation: none;
+    opacity: 1;
   }
 }

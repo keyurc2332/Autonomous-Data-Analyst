@@ -13,6 +13,19 @@ export interface Project {
   created_at: string;
 }
 
+export interface ProjectSummary extends Project {
+  dataset_count: number;
+  run_count: number;
+  row_count: number | null;
+  last_run_id: string | null;
+  last_verdict: "strong" | "acceptable" | "weak" | null;
+  last_metric: string | null;
+  last_value: number | null;
+  last_run_at: string | null;
+  leaked_count: number;
+  derived_target: boolean;
+}
+
 export interface DatasetSummary {
   id: string;
   project_id: string;
@@ -77,6 +90,9 @@ export interface QualityCheck {
   name: string;
   passed: boolean;
   detail: string;
+  /* Whether this check drives the verdict. A non-gating check that did not
+     pass found something that was handled, not a failure. */
+  gating?: boolean;
 }
 
 export interface Quality {
@@ -227,7 +243,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   llmCheck: () => request<LLMCheck>("/llm/check"),
 
-  listProjects: () => request<Project[]>("/projects"),
+  listProjects: () => request<ProjectSummary[]>("/projects"),
   createProject: (name: string, description?: string) =>
     request<Project>("/projects", {
       method: "POST",

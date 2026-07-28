@@ -11,6 +11,29 @@ class ProjectCreate(BaseModel):
     description: str | None = Field(default=None, max_length=5000)
 
 
+class ProjectSummary(BaseModel):
+    """Everything the home screen needs, in one round trip."""
+
+    id: uuid.UUID
+    name: str
+    description: str | None
+    target_column: str | None
+    task_type: TaskType
+    created_at: datetime
+
+    dataset_count: int
+    run_count: int
+    row_count: int | None
+
+    last_run_id: uuid.UUID | None
+    last_verdict: str | None
+    last_metric: str | None
+    last_value: float | None
+    last_run_at: datetime | None
+    leaked_count: int
+    derived_target: bool
+
+
 class ProjectRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

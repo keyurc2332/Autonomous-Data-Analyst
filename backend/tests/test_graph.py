@@ -220,3 +220,44 @@ async def test_summary_facts_quote_indicator_names_intact(monkeypatch, dataset):
     prompt = captured["human"]
     assert '"mass (was missing)" = 0.0334' in prompt
     assert "Never shorten it to the bare column name" in prompt
+
+
+async def test_summary_is_told_when_the_target_is_derived(monkeypatch, dataset):
+    """Regression: on the bike dataset (cnt = casual + registered) the summary
+    reported R2 1.0000 as an achievement while the banner beside it said the
+    number was meaningless. The fix reached training, quality, the UI and the
+    PDF -- but not the layer that actually speaks."""
+    from app.agents.nodes import summary_node
+
+    captured: dict = {}
+
+    class Capturing(FakeLLM):
+        async def ainvoke(self, messages):
+            captured["system"] = messages[0][1]
+            captured["human"] = messages[-1][1]
+            return await super().ainvoke(messages)
+
+    path, profile = dataset
+    monkeypatch.setattr(nodes, "get_llm", lambda *a, **k: Capturing(text="ok"))
+
+    await summary_node({
+        "steps": [],
+        "plan": {"target_column": "cnt", "task_type": "regression",
+                 "rationale": "x", "data_quality_concerns": []},
+        "training": {
+            "target_column": "cnt", "task_type": "regression",
+            "n_train": 582, "n_test": 146, "features_used": ["casual"],
+            "features_dropped": [], "best_model": "ridge",
+            "additive_leakage": {
+                "r2": 1.0,
+                "reason": "A linear model reconstructs 'cnt' from its own features.",
+                "contributors": [{"column": "casual", "coefficient": 1.0}],
+            },
+            "experiments": [{"model_name": "ridge", "primary_metric": "r2",
+                             "primary_metric_value": 1.0, "metrics": {"r2": 1.0}}],
+        },
+    })
+
+    assert "CRITICAL" in captured["human"]
+    assert "arithmetic, not prediction" in captured["human"]
+    assert "derived from its own columns" in captured["system"]

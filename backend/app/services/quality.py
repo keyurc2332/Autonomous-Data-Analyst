@@ -100,7 +100,8 @@ def assess(
         Leakage that has already been removed is worth showing the reader, but
         it does not make the resulting honest model bad.
         """
-        checks.append({"name": name, "passed": passed, "detail": detail})
+        checks.append({"name": name, "passed": passed, "detail": detail,
+                       "gating": gating})
         if not passed and gating:
             reasons.append(detail)
 

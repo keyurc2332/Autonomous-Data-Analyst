@@ -132,3 +132,16 @@ def test_auc_gain_now_counts_as_improvement():
     # F1 fell, AUC rose. The gate metric is what decides.
     assert is_improvement(after.gate_value, before.gate_value) is True
     assert is_improvement(after.primary_value, before.primary_value) is False
+
+
+def test_checks_record_whether_they_gate_the_verdict():
+    """Presentation needs to tell a failure apart from a handled finding."""
+    report = assess(
+        _training(value=0.6, roc_auc=0.58),
+        {"features": [{"feature": "a", "importance": 1.0}]},
+    )
+    by_name = {c["name"]: c for c in report.checks}
+
+    assert by_name["class_separation"]["gating"] is True
+    assert by_name["target_leakage"]["gating"] is False
+    assert all("gating" in c for c in report.checks)

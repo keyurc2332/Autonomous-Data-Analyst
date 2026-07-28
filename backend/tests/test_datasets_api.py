@@ -25,6 +25,23 @@ def _upload(name: str = "customers.csv", content: str = CSV):
 
 
 @pytest.fixture
+def stub_llm_for_summary(monkeypatch):
+    """Keep the summary test off the network."""
+    from app.agents import nodes
+    from app.agents.nodes import PlanOutput
+    from tests.test_graph import FakeLLM
+
+    monkeypatch.setattr(
+        nodes, "get_llm",
+        lambda *a, **k: FakeLLM(
+            plan=PlanOutput(target_column="churn", task_type="classification",
+                            rationale="Binary target."),
+            text="A short summary.",
+        ),
+    )
+
+
+@pytest.fixture
 async def project(client, db_ready):
     """Create a project and tear it down afterwards."""
     resp = await client.post(f"{PREFIX}/projects", json={"name": "Test Project"})
@@ -120,3 +137,46 @@ async def test_dataset_delete_removes_it(client, project):
         f"{PREFIX}/projects/{project['id']}/datasets/{dataset_id}")).status_code == 204
     assert (await client.get(
         f"{PREFIX}/projects/{project['id']}/datasets/{dataset_id}")).status_code == 404
+
+
+async def test_project_list_carries_last_run_summary(client, db_ready, stub_llm_for_summary):
+    """The home screen renders verdicts, so the list endpoint must carry them
+    without a request per project."""
+    created = await client.post(f"{PREFIX}/projects", json={"name": "Summary Test"})
+    project = created.json()
+    try:
+        await client.post(
+            f"{PREFIX}/projects/{project['id']}/datasets", files=_upload()
+        )
+        await client.post(
+            f"{PREFIX}/projects/{project['id']}/analysis",
+            json={"dataset_id": (await client.get(
+                f"{PREFIX}/projects/{project['id']}/datasets")).json()[0]["id"]},
+        )
+
+        listing = await client.get(f"{PREFIX}/projects")
+        entry = next(p for p in listing.json() if p["id"] == project["id"])
+
+        assert entry["dataset_count"] == 1
+        assert entry["run_count"] == 1
+        assert entry["row_count"] == 8
+        assert entry["last_verdict"] in {"strong", "acceptable", "weak"}
+        assert entry["last_metric"] is not None
+        assert entry["last_run_id"] is not None
+    finally:
+        await client.delete(f"{PREFIX}/projects/{project['id']}")
+
+
+async def test_project_without_runs_has_empty_summary(client, db_ready):
+    created = await client.post(f"{PREFIX}/projects", json={"name": "Untouched"})
+    project = created.json()
+    try:
+        listing = await client.get(f"{PREFIX}/projects")
+        entry = next(p for p in listing.json() if p["id"] == project["id"])
+        assert entry["dataset_count"] == 0
+        assert entry["run_count"] == 0
+        assert entry["last_verdict"] is None
+        assert entry["leaked_count"] == 0
+        assert entry["derived_target"] is False
+    finally:
+        await client.delete(f"{PREFIX}/projects/{project['id']}")

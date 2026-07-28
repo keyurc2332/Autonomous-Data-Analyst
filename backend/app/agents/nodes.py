@@ -11,6 +11,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.agents.findings import collect as collect_findings
 from app.agents.prompting import PLANNER_SYSTEM, summarise_profile
 from app.agents.state import AnalysisState
 from app.core.llm import get_llm, message_text
@@ -258,6 +259,9 @@ harmed or helped performance unless the importance figures show it. A column \
 having missing values does not mean it damaged the model. State what was \
 measured; leave causes to the reader.
 - Mention a data-quality caveat only as an observation, never as an explanation.
+- If told the target is derived from its own columns, that is the most \
+important fact in the report. Say it in the first sentence, state that the \
+score is meaningless, and do not describe the model as performing well.
 - If more than one attempt was made, say so in one clause: what changed and \
 whether it helped. Do not dramatise it.
 """
@@ -283,6 +287,11 @@ async def summary_node(state: AnalysisState) -> dict[str, Any]:
         ),
         f"Planner rationale: {plan['rationale']}",
     ]
+    # Findings come from app/agents/findings.py, not from remembering to edit
+    # this function. Critical ones are placed first so they lead the summary.
+    critical, ordinary = collect_findings(state)
+    facts = critical + facts + ordinary
+
     explanation = state.get("explanation")
     if explanation and explanation.get("features"):
         method = explanation["method"]
@@ -389,17 +398,25 @@ honestly reported is more useful than three rounds of churn.
 
 
 class ReflectionOutput(BaseModel):
-    """Structured output schema for the reflection agent."""
+    """Structured output schema for the reflection agent.
+
+    Deliberately free of nullable fields. `str | None` generates an `anyOf`
+    containing `null`, which some providers reject outright in a tool schema --
+    Groq returned BadRequestError and reflection silently degraded to "accept"
+    on every run. Empty strings mean "no change" and are normalised below.
+    """
 
     action: Literal["retry", "abandon", "accept"]
     reasoning: str = Field(description="Two or three sentences citing measured values.")
     exclude_features: list[str] = Field(
         default_factory=list, description="Feature columns to drop on the retry."
     )
-    new_target: str | None = Field(
-        default=None, description="Only if the current target is unsuitable."
+    new_target: str = Field(
+        default="", description="A different target column, or empty for no change."
     )
-    new_task_type: Literal["classification", "regression"] | None = None
+    new_task_type: str = Field(
+        default="", description="'classification', 'regression', or empty for no change."
+    )
 
 
 def _validate_revision(
@@ -514,6 +531,26 @@ async def reflection_node(state: AnalysisState) -> dict[str, Any]:
     ]
     if report.suggestions:
         facts += ["", "Observations:", *(f"  - {s}" for s in report.suggestions)]
+    # A derived target outranks every metric in the report. Without this the
+    # summary reported R2 1.0000 on the bike dataset as an achievement, while
+    # the banner beside it said the number was meaningless.
+    derived = (training or {}).get("additive_leakage")
+    if derived:
+        facts.append(
+            "CRITICAL: " + derived["reason"]
+            + " The scores above are arithmetic, not prediction. Lead with this; "
+            "state plainly that the result is meaningless and say which columns "
+            "must be removed."
+        )
+
+    leaked = (training or {}).get("leaked_features") or []
+    if leaked:
+        facts.append(
+            "Columns removed before training for restating the target: "
+            + ", ".join(f["column"] for f in leaked)
+            + ". Every score above comes from a model trained without them."
+        )
+
     explanation = state.get("explanation")
     if explanation and explanation.get("features"):
         facts += ["", "Measured feature importance:"]
@@ -528,6 +565,10 @@ async def reflection_node(state: AnalysisState) -> dict[str, Any]:
             [("system", REFLECTION_SYSTEM), ("human", "\n".join(facts))]
         )
         revision = result.model_dump()
+        # Normalise the empty-string sentinels back to None for the guards.
+        revision["new_target"] = revision["new_target"].strip() or None
+        if revision["new_task_type"] not in {"classification", "regression"}:
+            revision["new_task_type"] = None
     except Exception as exc:
         logger.warning("Reflection LLM failed", extra={"error": str(exc)})
         return {**base, "reflection": {"action": "accept", "reasoning":

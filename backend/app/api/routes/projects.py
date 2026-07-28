@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.db.models import User
 from app.db.session import get_db
-from app.schemas.projects import ProjectCreate, ProjectRead
+from app.schemas.projects import ProjectCreate, ProjectRead, ProjectSummary
 from app.services import projects as svc
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -21,11 +21,12 @@ async def create_project(
     return await svc.create_project(db, user, payload.name, payload.description)
 
 
-@router.get("", response_model=list[ProjectRead])
+@router.get("", response_model=list[ProjectSummary])
 async def list_projects(
     db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)
 ):
-    return await svc.list_projects(db, user.id)
+    """Projects with a summary of their most recent successful run."""
+    return await svc.list_projects_with_summary(db, user.id)
 
 
 @router.get("/{project_id}", response_model=ProjectRead)

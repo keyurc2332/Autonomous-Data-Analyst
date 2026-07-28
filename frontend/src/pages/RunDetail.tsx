@@ -4,6 +4,7 @@ import { api, type AnalysisRun } from "../api";
 import { ImportanceChart } from "../components/ImportanceChart";
 import { RunTrace } from "../components/RunTrace";
 import { QualityChecks, VerdictBadge } from "../components/Verdict";
+import { SkeletonCard } from "../components/Skeleton";
 import { ErrorNote, Metric, Panel } from "../components/shell";
 
 const CLEANING_TITLES: Record<string, string> = {
@@ -29,7 +30,18 @@ export function RunDetail() {
   }, [runId]);
 
   if (error) return <div className="mx-auto max-w-3xl p-6"><ErrorNote>{error}</ErrorNote></div>;
-  if (!run) return <div className="mx-auto max-w-3xl p-6 text-ink-faint">Loading…</div>;
+  if (!run) {
+    return (
+      <div className="mx-auto max-w-5xl px-6 py-8">
+        <div className="mb-6 h-7 w-44 animate-pulse rounded bg-rule" />
+        <div className="mb-5 h-20 animate-pulse rounded-md bg-rule/50" />
+        <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    );
+  }
 
   const out = run.output_payload;
   const quality = out?.quality;
@@ -114,13 +126,13 @@ export function RunDetail() {
       )}
 
       {out?.summary && (
-        <p className="mt-5 max-w-3xl border-l-2 border-verified pl-4 text-[15px] leading-relaxed text-ink">
+        <p className="rise mt-5 max-w-3xl border-l-2 border-verified pl-4 text-[15px] leading-relaxed text-ink">
           {out.summary}
         </p>
       )}
 
       <div className="mt-7 grid gap-5 lg:grid-cols-[250px_1fr]">
-        <div className="space-y-5">
+        <div className="rise rise-1 space-y-5">
           <Panel title="How it ran">
             <RunTrace steps={out?.steps ?? []} />
           </Panel>
@@ -179,7 +191,7 @@ export function RunDetail() {
           )}
         </div>
 
-        <div className="space-y-5">
+        <div className="rise rise-2 space-y-5">
           {out?.explanation && (
             <Panel title="What drove the predictions">
               <ImportanceChart explanation={out.explanation} />

@@ -131,3 +131,47 @@ def test_text_columns_detected_regardless_of_pandas_dtype():
     assert _is_textlike(pd.Series([1.5, 2.5])) is False
     assert _is_textlike(pd.Series([True, False])) is False
     assert _is_textlike(pd.to_datetime(pd.Series(["2024-01-01"]))) is False
+
+
+@pytest.mark.parametrize("delimiter", [";", "\t", "|"])
+def test_delimiter_is_sniffed_not_assumed(tmp_path, delimiter):
+    """Regression: cleaning read with pandas' default comma separator.
+
+    UCI's bank marketing set is semicolon-delimited. Cleaning collapsed it to a
+    single column of quoted text and wrote that out, so every later step failed
+    on a file that had parsed perfectly at upload. Cleaning runs first, so it
+    has to be at least as careful as profiling.
+    """
+    source = tmp_path / "delim.csv"
+    rows = "\n".join(delimiter.join(str(v) for v in row)
+                     for row in [(1, "a", 10), (2, "b", 20), (3, "c", 30)])
+    source.write_text(delimiter.join(["id", "label", "value"]) + "\n" + rows + "\n")
+    dest = tmp_path / "out.csv"
+
+    report = clean_file(source, dest)
+
+    assert report.columns_before == 3
+    assert report.rows_before == 3
+    # Output is normalised to comma, so everything downstream sees one format.
+    cleaned = pd.read_csv(dest)
+    assert list(cleaned.columns) == ["id", "label", "value"]
+    assert len(cleaned) == 3
+
+
+def test_quoted_semicolon_file_survives_cleaning(tmp_path):
+    """The exact shape of the bank marketing file: quoted fields, semicolons."""
+    source = tmp_path / "bank.csv"
+    source.write_text(
+        '"age";"job";"y"\n'
+        '30;"admin.";"no"\n'
+        '45;"technician";"yes"\n'
+        '52;"admin.";"no"\n'
+    )
+    dest = tmp_path / "out.csv"
+
+    clean_file(source, dest)
+    cleaned = pd.read_csv(dest)
+
+    assert list(cleaned.columns) == ["age", "job", "y"]
+    assert cleaned["age"].tolist() == [30, 45, 52]
+    assert set(cleaned["y"]) == {"no", "yes"}

@@ -21,13 +21,21 @@ class ChatRequest(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
     role: MessageRole
     content: str
     created_at: datetime
-    metadata_: dict[str, Any] | None = Field(default=None, alias="metadata")
+    # `alias` is used for BOTH reading and writing, so alias="metadata" made
+    # Pydantic read `msg.metadata` -- which on every SQLAlchemy declarative
+    # model is the MetaData registry, not this column. Every chat response
+    # failed validation with "Input should be a valid dictionary".
+    # validation_alias points at the ORM attribute; the field name is what
+    # goes out in JSON.
+    metadata: dict[str, Any] | None = Field(
+        default=None, validation_alias="metadata_"
+    )
 
 
 @router.get("", response_model=list[ChatMessage])

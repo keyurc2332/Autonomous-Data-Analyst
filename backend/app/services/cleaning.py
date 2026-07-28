@@ -173,8 +173,19 @@ def clean_dataframe(df: pd.DataFrame) -> tuple[pd.DataFrame, CleaningReport]:
 
 
 def clean_file(source: Path, destination: Path) -> CleaningReport:
-    """Clean a CSV and write the result. Blocking -- run in a thread."""
-    df = pd.read_csv(source)
+    """Clean a delimited file and write the result. Blocking -- run in a thread.
+
+    The delimiter and encoding are sniffed, not assumed. Reading with pandas'
+    default comma separator turned a semicolon-delimited file (UCI's bank
+    marketing set) into a single column of quoted text, and since cleaning runs
+    before training, every downstream step then failed on a file that had
+    parsed perfectly at upload. Output is always written as comma-delimited
+    UTF-8, so everything after this point can rely on one format.
+    """
+    from app.services.profiling import sniff_dialect
+
+    encoding, delimiter = sniff_dialect(source)
+    df = pd.read_csv(source, encoding=encoding, sep=delimiter, skipinitialspace=True)
     cleaned, report = clean_dataframe(df)
     destination.parent.mkdir(parents=True, exist_ok=True)
     cleaned.to_csv(destination, index=False)

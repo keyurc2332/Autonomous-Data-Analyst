@@ -755,3 +755,197 @@ Removing the quotes is safe here: `from __future__ import annotations` already
 makes every annotation a string at runtime, and SQLAlchemy resolves
 relationship targets lazily at mapper-configuration time. Verified by calling
 `configure_mappers()` explicitly rather than assuming.
+
+---
+
+## Home screen
+
+The projects list was a bare list of names — the weakest page in the app, and
+the first one anyone sees. It said nothing about what the system does.
+
+`GET /projects` now returns a summary per project: dataset and run counts, row
+count, and the last successful run's verdict, gate metric and value, plus flags
+for leakage caught or a derived target. Cards render that directly, so the home
+screen answers "what has this thing found?" rather than "what have you named
+things?".
+
+Three aggregate queries, not one per project. N+1 is tolerable at portfolio
+scale and a bad habit at any scale.
+
+A stats strip appears once anything has been analysed: projects, analyses run,
+rows examined, and **datasets with leakage caught** — the last being the number
+worth putting in front of a reader.
+
+### Skeletons instead of "Loading…"
+
+A spinner says *wait*; a skeleton says *here is the shape of what you'll get*.
+Placeholders now match the layout they're replacing, so the page doesn't jump
+when data arrives.
+
+---
+
+## Cleaning assumed a comma
+
+Trying UCI's bank marketing set (41k rows, semicolon-delimited, quoted fields)
+produced:
+
+```
+parse: ';' delim, {'rows': 41176, 'columns': 1}
+TrainingError: Target 'y' is not a column in this dataset.
+Available: age;"job";"marital";"education";...
+```
+
+The profiler sniffs the delimiter. **Cleaning did not** — it used
+`pd.read_csv(source)` with pandas' default comma, collapsed every row into one
+quoted string, and wrote that out. Because cleaning runs first, everything
+downstream then failed on a file that had parsed perfectly at upload.
+
+Every test file up to this point was comma-delimited, so nothing caught it.
+`test_semicolon_delimiter_is_sniffed` existed — but it tested *profiling*, and
+the bug was in the stage that runs before it.
+
+Fixed by reusing the profiler's `sniff_dialect()`, and by normalising output to
+comma-delimited UTF-8 so every stage after cleaning can rely on one format.
+
+The general shape: **a new stage inserted at the front of a pipeline inherits
+none of the care taken downstream.** Cleaning was added late and reimplemented
+file reading from scratch.
+
+---
+
+## Two failures the bike dataset exposed
+
+UCI's bike sharing set has `cnt = casual + registered`. The additive check
+fired exactly as designed — R2 1.0000, coefficients 1.000 and 1.000, verdict
+weak. Two things around it did not.
+
+### The summary never mentioned it
+
+The banner said the score was meaningless. The quality check said it. The PDF
+said it. The **summary** said "achieved an r2 score of 1.0000" and then
+discussed an unrelated `temp`/`atemp` correlation.
+
+`additive_leakage` had been threaded into training, quality, the UI and the
+report — and not into the summary node's fact list. The same shape as the
+`mass (was missing)` attribution bug: a fix that reaches every layer except
+the one that speaks.
+
+Now the summary is told explicitly, and instructed to lead with it and to
+refuse to describe the model as performing well.
+
+### Reflection was rejected by the provider, silently
+
+    Reflect: unavailable (BadRequestError)
+
+Not a graceful degradation by choice — Groq rejected the request. Planning
+worked on the same run, which is what made it hard to see.
+
+`ReflectionOutput` had `new_target: str | None` and
+`new_task_type: Literal[...] | None`. An optional field generates an `anyOf`
+containing `null`, which some providers reject in a tool schema. `PlanOutput`
+has no optional fields, so planning kept working and masked the problem.
+
+Replaced with empty-string sentinels normalised back to `None` in code, and
+`test_reflection_schema_has_no_nullable_fields` asserts the schema stays flat.
+
+The lesson is about fallbacks: **a fallback that fires on every run is not a
+fallback, it is the code path.** The graceful degradation designed for rate
+limits was quietly absorbing a permanent schema error, and the run looked
+normal every time.
+
+### What bank confirmed
+
+41,176 rows, semicolon-delimited, strong at ROC-AUC 0.928 — and cleaning
+converted **12,718** `"unknown"` strings to real nulls across six columns.
+Left as text they would have been learned as a legitimate category.
+
+`duration` came out as the strongest driver. UCI's own documentation notes it
+is unknown before a call is placed, so a model using it cannot be deployed.
+The system does not flag this and cannot: temporal leakage is not detectable
+statistically. What it does is make the dominance visible, which is what lets
+a human catch it.
+
+---
+
+## Making the recurring bug impossible
+
+Nine datasets produced two different kinds of finding, and conflating them
+made the project feel less finished than it was.
+
+**New capabilities** — the per-feature leakage check (Titanic), the additive
+check (taxis), missingness indicators (planets). Each is a class of problem
+the system now detects permanently. These should tail off, and did: the last
+two datasets produced none.
+
+**Defects** — the delimiter assumption (bank), and two on bike. These are the
+ones that matter, and they had a shape.
+
+Three separate times, a signal was added to training or quality, threaded
+into the database, the UI and the PDF, and never given to the summary node.
+Missingness indicators, then additive leakage, then removed leaked columns.
+Each was invisible until someone read the prose and noticed it disagreed with
+the panel beside it.
+
+The cause was that `summary_node` hand-assembled its facts. Adding a finding
+meant remembering to edit a function three files away, and **remembering is
+not a mechanism.**
+
+`agents/findings.py` is now the single registry of things the report must
+state. `summary_node` iterates it. `tests/test_findings.py` asserts that every
+finding-shaped field on `TrainingOutcome` and `QualityReport` appears in the
+registry, and that no registry entry points at a field that no longer exists.
+Adding a signal without registering it fails the suite:
+
+    AssertionError: {'brand_new_signal'} exist on TrainingOutcome but are not
+    in FINDINGS, so the summary will never mention them.
+
+The general principle: when the same mistake happens three times, the answer
+is not more care. It is a mechanism that makes the mistake fail loudly.
+
+## Interface polish
+
+Motion is deliberately restrained. The subject is measurement, so movement
+should read as things settling into place, not performing: one easing curve,
+two durations, no bounce, and a `prefers-reduced-motion` block that disables
+all of it.
+
+The one real gap was the analysis run — a static "Working…" for up to thirty
+seconds. `RunProgress` now shows the actual pipeline stages, a live elapsed
+count, and an honest expectation, with a warning once it passes 45 seconds.
+
+It does **not** show a progress bar. The request is synchronous, so the client
+cannot know which stage is executing, and inventing one would teach the reader
+that the interface guesses. Showing the real sequence and the real clock is
+both more useful and more honest.
+
+---
+
+## Chat returned 500 on every message
+
+The endpoint ran, the agent answered, the row was written to Postgres — and the
+response failed to serialise, so the conversation was never visible.
+
+```
+ValidationError: metadata
+  Input should be a valid dictionary
+  [input_value=MetaData(), input_type=MetaData]
+```
+
+`ChatMessage` declared `metadata_: dict | None = Field(alias="metadata")`.
+Pydantic's `alias` governs **reading as well as writing**, so with
+`from_attributes=True` it fetched `msg.metadata` — which on every SQLAlchemy
+declarative model is the `MetaData` registry, not the JSONB column.
+
+The ORM attribute is `metadata_` precisely because `metadata` is taken. Aliasing
+back to the taken name reintroduced the collision the underscore existed to
+avoid.
+
+Fixed with `validation_alias="metadata_"`, so reading targets the ORM attribute
+while the field name — and therefore the JSON key the frontend reads — stays
+`metadata`.
+
+Worth noting where the tests were thin: `test_chat_tools.py` and
+`test_chat_agent.py` both passed throughout, because both stop at the service
+boundary. Nothing exercised the response model. It is the same gap that hid the
+async lazy-load in Phase 3: **the layer between "it computed the right answer"
+and "the answer left the building" needs its own tests.**

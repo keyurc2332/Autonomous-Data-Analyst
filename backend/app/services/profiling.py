@@ -102,7 +102,7 @@ class ParseInfo:
     sampled: bool
 
 
-def _sniff(path: Path) -> tuple[str, str]:
+def sniff_dialect(path: Path) -> tuple[str, str]:
     """Detect encoding and delimiter from the first chunk of the file."""
     raw = path.read_bytes()[:64_000]
     if not raw.strip():
@@ -128,7 +128,7 @@ def _sniff(path: Path) -> tuple[str, str]:
 
 def load_dataframe(path: Path, max_rows: int = MAX_PROFILE_ROWS) -> tuple[pd.DataFrame, ParseInfo]:
     """Read a delimited text file into a DataFrame, sampling if very large."""
-    encoding, delimiter = _sniff(path)
+    encoding, delimiter = sniff_dialect(path)
 
     read_kwargs: dict[str, Any] = {
         "encoding": encoding,

@@ -8,6 +8,8 @@ import {
   type Project,
 } from "../api";
 import { Chat } from "../components/Chat";
+import { RunProgress } from "../components/RunProgress";
+import { SkeletonCard, SkeletonLines } from "../components/Skeleton";
 import { Button, Empty, ErrorNote, Metric, Panel } from "../components/shell";
 
 const SEVERITY = {
@@ -28,6 +30,7 @@ export function ProjectDetail() {
   const [goal, setGoal] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
 
   const dataset = datasets[0] ?? null;
 
@@ -62,19 +65,29 @@ export function ProjectDetail() {
 
   async function run() {
     if (!dataset) return;
-    setBusy("Planning, training, explaining. This takes a few seconds.");
+    setRunning(true);
     setError(null);
     try {
       const created = await api.startAnalysis(projectId, dataset.id, goal || undefined);
       navigate(`/runs/${created.id}`);
     } catch (e) {
       setError((e as Error).message);
-      setBusy(null);
+      setRunning(false);
     }
   }
 
   if (error && !project) return <div className="mx-auto max-w-3xl p-6"><ErrorNote>{error}</ErrorNote></div>;
-  if (!project) return <div className="mx-auto max-w-3xl p-6 text-ink-faint">Loading…</div>;
+  if (!project) {
+    return (
+      <div className="mx-auto max-w-5xl px-6 py-8">
+        <div className="mb-6 h-6 w-56 animate-pulse rounded bg-rule" />
+        <div className="grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
@@ -86,7 +99,7 @@ export function ProjectDetail() {
       {error && <div className="mt-4"><ErrorNote>{error}</ErrorNote></div>}
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
-        <div className="space-y-5">
+        <div className="rise rise-1 space-y-5">
           <Panel
             title="Table"
             aside={
@@ -133,6 +146,12 @@ export function ProjectDetail() {
             )}
           </Panel>
 
+          {dataset && !profile && (
+            <Panel title="What the profiler found">
+              <SkeletonLines rows={4} />
+            </Panel>
+          )}
+
           {profile && (
             <Panel title="What the profiler found">
               <div className="mb-4 grid grid-cols-2 gap-4">
@@ -161,7 +180,7 @@ export function ProjectDetail() {
           )}
         </div>
 
-        <div className="space-y-5">
+        <div className="rise rise-2 space-y-5">
           <Panel title="Run an analysis">
             <label className="mb-1.5 block text-[13px] text-ink-soft">
               What do you want to know? Optional.
@@ -172,10 +191,18 @@ export function ProjectDetail() {
               placeholder="work out who is going to leave"
               className="mb-3 w-full rounded border border-rule-strong px-2.5 py-1.5 text-[14px] placeholder:text-ink-faint"
             />
-            <Button onClick={run} disabled={!dataset || !!busy}>
-              {busy ? "Working…" : "Run analysis"}
-            </Button>
-            {busy && <p className="mt-2.5 text-[12px] leading-snug text-ink-faint">{busy}</p>}
+            {running ? (
+              <RunProgress />
+            ) : (
+              <>
+                <Button onClick={run} disabled={!dataset || !!busy}>
+                  {busy ? "Working…" : "Run analysis"}
+                </Button>
+                {busy && (
+                  <p className="mt-2.5 text-[12px] leading-snug text-ink-faint">{busy}</p>
+                )}
+              </>
+            )}
           </Panel>
 
           <Chat projectId={projectId} hasDataset={!!dataset} />

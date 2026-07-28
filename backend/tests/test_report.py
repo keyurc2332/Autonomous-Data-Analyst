@@ -119,3 +119,23 @@ def test_survives_a_minimal_run():
 def test_missing_optional_sections_are_skipped(field):
     run = {k: v for k, v in RUN.items() if k != field}
     assert build_report("Churn", run, EXPERIMENTS).startswith(b"%PDF")
+
+
+def test_handled_findings_are_not_labelled_as_failures():
+    """A non-gating check that did not pass found something and it was handled.
+
+    The Titanic report read `target leakage | fail | Removed before training`,
+    which makes a good outcome look like a bad one to anyone skimming.
+    """
+    run = {**RUN, "quality": {**RUN["quality"], "checks": [
+        {"name": "class_separation", "passed": False, "gating": True,
+         "detail": "ROC-AUC 0.58 is below 0.65."},
+        {"name": "target_leakage", "passed": False, "gating": False,
+         "detail": "Removed before training: alive."},
+        {"name": "sample_size", "passed": True, "gating": True,
+         "detail": "627 rows is sufficient."},
+    ]}}
+    text = _text(build_report("Titanic", run, EXPERIMENTS))
+
+    assert "found" in text      # the handled finding
+    assert "fail" in text       # the genuine gate failure

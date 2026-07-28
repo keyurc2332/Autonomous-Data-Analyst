@@ -12,7 +12,9 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`rounded-md border border-rule bg-surface ${className}`}>
+    <section
+      className={`rounded-md border border-rule bg-surface transition-colors duration-200 ${className}`}
+    >
       {title && (
         <header className="flex items-baseline justify-between gap-3 border-b border-rule px-4 py-2.5">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
@@ -50,7 +52,9 @@ export function Button({
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "quiet" }) {
   const base =
-    "inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-[13px] font-medium transition-colors disabled:opacity-45 disabled:cursor-not-allowed";
+    "inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-[13px] font-medium " +
+    "transition-all duration-150 active:scale-[0.97] " +
+    "disabled:opacity-45 disabled:cursor-not-allowed disabled:active:scale-100";
   const styles =
     variant === "primary"
       ? "bg-verified text-white hover:bg-[#0b5f58]"

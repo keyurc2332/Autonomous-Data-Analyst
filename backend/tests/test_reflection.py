@@ -213,3 +213,45 @@ async def test_reflection_llm_failure_ends_cleanly(monkeypatch, weak_dataset):
     assert "reflect:unavailable" in final["steps"]
     assert final["summary"] is not None
     assert final.get("error") is None
+
+
+def test_reflection_schema_has_no_nullable_fields():
+    """Regression: Groq returned BadRequestError on every reflection call.
+
+    `str | None` generates an `anyOf` containing `null`, which some providers
+    reject in a tool schema. The failure was silent -- reflection degraded to
+    "accept" and the run looked normal. PlanOutput has no optional fields,
+    which is why planning kept working and masked it.
+    """
+    from app.agents.nodes import ReflectionOutput
+
+    schema = ReflectionOutput.model_json_schema()
+    for name, spec in schema["properties"].items():
+        assert "anyOf" not in spec, f"{name} is nullable and may be rejected"
+        assert spec.get("type") != "null", name
+
+
+async def test_empty_string_sentinels_normalise_to_no_change(monkeypatch, weak_dataset):
+    """Empty strings replace None in the schema; they must not be treated as a
+    request to change the target to ''."""
+    path, profile = weak_dataset
+    llm = ScriptedLLM(PLAN, [
+        ReflectionOutput(action="retry", reasoning="drop noise",
+                         exclude_features=["b"], new_target="", new_task_type=""),
+        ReflectionOutput(action="abandon", reasoning="done"),
+    ])
+    final = await _run(monkeypatch, llm, path, profile)
+
+    assert final["plan"]["target_column"] == "label"     # unchanged
+    assert final["excluded_features"] == ["b"]
+
+
+async def test_garbage_task_type_is_ignored(monkeypatch, weak_dataset):
+    path, profile = weak_dataset
+    llm = ScriptedLLM(PLAN, [
+        ReflectionOutput(action="retry", reasoning="x", exclude_features=["b"],
+                         new_target="label", new_task_type="clustering"),
+        ReflectionOutput(action="abandon", reasoning="done"),
+    ])
+    final = await _run(monkeypatch, llm, path, profile)
+    assert final["plan"]["task_type"] == "classification"
