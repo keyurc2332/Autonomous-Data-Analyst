@@ -2,7 +2,7 @@
 
 **An agentic data analyst that tells you when your data can't answer your question.**
 
-![Tests](https://img.shields.io/badge/tests-184%20passing-0f766e)
+![Tests](https://img.shields.io/badge/tests-214%20passing-0f766e)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
@@ -32,7 +32,7 @@ needing a different check, none catchable by unit tests alone:
 | Cleaning assuming a comma delimiter, destroying semicolon-separated files before training saw them | Trying a dataset that wasn't comma-delimited |
 
 Each is documented in [`docs/PHASE_NOTES.md`](docs/PHASE_NOTES.md) with the
-measurement that prompted it. The habit that found all four: **treat a high
+measurement that prompted it. The habit that found all five: **treat a high
 score as a hypothesis about the data, not a result.**
 
 Titanic contains `survived` and `alive` — the same fact twice. Left alone, the
@@ -40,6 +40,12 @@ model scores a perfect 1.000 and has learned nothing. Here it is caught,
 removed, and the honest result reported instead:
 
 ![Leakage caught on the Titanic dataset](docs/screenshot-run.png)
+
+The bike sharing dataset is sharper still. `cnt` is literally `casual +
+registered`, so a linear model reconstructs it exactly. The system reports
+R² **1.0000** — and refuses to endorse it:
+
+![A perfect score, rejected](docs/screenshot-derived-target.png)
 
 ---
 
@@ -89,7 +95,13 @@ states the verdict before any number.
 
 You can also **ask questions about the data**. The chat agent has seven
 schema-validated tools and chooses which to call. There is deliberately no
-"run this code" tool.
+"run this code" tool, and every answer shows which tools produced it.
+
+![Asking a question about the data](docs/screenshot-chat.png)
+
+A generated report is included at
+[`docs/sample-report.pdf`](docs/sample-report.pdf) — the Titanic run, verdict
+first.
 
 ---
 
@@ -100,8 +112,8 @@ Requires Docker and a free API key from
 [Groq](https://console.groq.com/keys). Neither needs a credit card.
 
 ```bash
-git clone https://github.com/keyurc2332/autonomous-data-analyst.git
-cd autonomous-data-analyst
+git clone https://github.com/keyurc2332/Autonomous-Data-Analyst.git
+cd Autonomous-Data-Analyst
 cp .env.example .env          # paste your key into GOOGLE_API_KEY
 docker compose up -d --build
 docker compose exec api alembic upgrade head
@@ -111,7 +123,7 @@ Open **http://localhost:5173**. There's a deliberately messy CSV in
 `sample_data/` to try it on.
 
 ```bash
-docker compose exec api pytest        # 184 tests
+docker compose exec api pytest        # 214 tests
 curl localhost:8000/api/v1/llm/check  # confirms the model is reachable
 ```
 
@@ -125,7 +137,7 @@ Python. The model decides *what* to predict, *whether* a result is trustworthy,
 and *how* to explain it — nothing else. A hallucinated plan therefore produces
 a validation error, not a corrupt pipeline.
 
-**No test makes a network call.** All 184 pass with no API key set; every LLM
+**No test makes a network call.** All 214 pass with no API key set; every LLM
 interaction is stubbed. Token spend at runtime is also flat regardless of
 dataset size, because the expensive analysis is ordinary Python.
 
