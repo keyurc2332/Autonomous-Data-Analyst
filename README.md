@@ -5,6 +5,7 @@
 ![Tests](https://img.shields.io/badge/tests-214%20passing-0f766e)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
 [**Watch a 90-second walkthrough**](https://youtu.be/26wGekv8rQ4)
 ![Home screen](docs/screenshot-home.png)
 
@@ -26,7 +27,7 @@ needing a different check, none catchable by unit tests alone:
 | Finding | What exposed it |
 |---|---|
 | A column restating the target — Titanic's `alive`, producing a perfect and meaningless score | Per-feature mutual information |
-| A target summing its own features — taxis, R² 0.997 from arithmetic | Linear reconstruction of the target |
+| A target summing its own features — bike sharing, where cnt = casual + registered gives R² 1.0000 |
 | Missingness misattributed to a column's value — planets, where `mass` is 99.7% absent for one class and 7.8% for another | Explicit missingness indicators |
 | Attribution lost in report formatting, reversing a fix one layer downstream | Reading the output |
 | Cleaning assuming a comma delimiter, destroying semicolon-separated files before training saw them | Trying a dataset that wasn't comma-delimited |
